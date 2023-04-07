@@ -1,5 +1,5 @@
 import torch.nn as nn
-
+import torch
 
 class Autoencoder(nn.Module):
     def __init__(self, conv_channels=16, kernel_size=3, encoding_dim=1024, stride=2, sampling_scale=None, image_dim=256):
@@ -32,6 +32,8 @@ class Autoencoder(nn.Module):
         self.stride = stride
         self.padding = self.kernel_size // 2
         self.sampling_scale = sampling_scale
+        self.image_dim = image_dim
+        self.encoding_dim = encoding_dim
         
         self.dimension_conv1 = calc_dim(image_dim, self.kernel_size, self.padding, self.stride, self.sampling_scale)
         # # self.dimension_conv2 = calc_dim(self.dimension_conv1, self.kernel_size, self.padding, self.stride, 1)
@@ -83,8 +85,19 @@ class Autoencoder(nn.Module):
     def forward(self, x):
         x = self.encoder_cnn(x)
         x = self.encoder_act1(self.encoder_fc1(self.flatten(x)))
-        
         x = self.unflatten(self.decoder_act1(self.decoder_fc1(x)))
         x = self.decoder_cnn(x)
 
+        return x
+    
+    def decode(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.unflatten(self.decoder_act1(self.decoder_fc1(x)))
+        x = self.decoder_cnn(x)
+        
+        return x
+    
+    def encode(self, x: torch.Tensor) -> torch.Tensor:
+        x = self.encoder_cnn(x)
+        x = self.encoder_act1(self.encoder_fc1(self.flatten(x)))
+        
         return x

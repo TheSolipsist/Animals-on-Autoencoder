@@ -1,3 +1,5 @@
 *.png
 archive/
 *.pyc
+results/
+saved_models/

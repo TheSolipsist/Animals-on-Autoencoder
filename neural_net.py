@@ -1,6 +1,7 @@
 import torch
 from torch.utils.data import DataLoader
 from plots import plot_learning_curve, show_images
+from time import perf_counter
 
 class NeuralNetwork():
     """
@@ -67,7 +68,7 @@ class NeuralNetwork():
             val_loss_epochs[i] /= samples
 
 
-    def fit(self, dataset, epochs, batch_size=None, images_to_reconstruct=None):
+    def fit(self, dataset, epochs, batch_size=None, images_to_reconstruct=None, plot_path=None):
         '''
         implements the training loop
         Parameters
@@ -89,22 +90,26 @@ class NeuralNetwork():
         test_loss = torch.zeros(epochs, dtype=torch.float32, requires_grad=False, device=self.device)
 
         if batch_size is None:
-            batch_size = dataset["train"].shape[0]
-        train_dataloader = DataLoader(dataset["train"], batch_size=batch_size, shuffle=True, drop_last=True)
+            batch_size = len(dataset["train"])
+        train_dataloader = DataLoader(dataset["train"], batch_size=min(batch_size, len(dataset["train"])), shuffle=True, drop_last=True)
         val_dataloader = DataLoader(dataset["test"], batch_size=min(batch_size, len(dataset["test"])), shuffle=False)
         
         print(f"\rModel: {self.tag} began training", end="")
+        t_start = perf_counter()
         for epoch in range(epochs):
             self.train_single_epoch(train_dataloader, train_loss, epoch)
             self.evaluate(val_dataloader, test_loss, epoch)
-            print(f"\rModel: {self.tag} Epoch: {epoch + 1} Training loss: {train_loss[epoch]} Testing loss: {test_loss[epoch]}", end="")
+            t_now = perf_counter()
+            print(f"\rModel: {self.tag} Epoch: {epoch + 1} Training loss: {train_loss[epoch]:.5f} Testing loss: {test_loss[epoch]:.5f} Total time: {(t_now - t_start):.2f} ETA: {((t_now - t_start) * ((epochs - epoch - 1) / (epoch + 1))):.1f}", end="")
         print()
         
         train_loss = train_loss.cpu().numpy()
         test_loss = test_loss.cpu().numpy()
         
-        # Plot learning curves                     
-        plot_learning_curve(training_res=train_loss, validation_res=test_loss, metric='MSE', title=self.tag, filename=f'{self.tag}_loss.png')
+        # Plot learning curves          
+        if plot_path is None:
+            plot_path = "."
+        plot_learning_curve(training_res=train_loss, validation_res=test_loss, metric='MSE', title=self.tag, filename=f'{plot_path}/{self.tag}_loss.png')
 
         # Show the chosen image from the dataset
         if images_to_reconstruct is not None:
